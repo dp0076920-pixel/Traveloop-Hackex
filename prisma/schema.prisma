@@ -1,0 +1,199 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  avatarUrl    String?  @map("avatar_url")
+  language     String   @default("en")
+  isAdmin      Boolean  @default(false) @map("is_admin")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  trips          Trip[]
+  sharedTrips    SharedTrip[]
+  bookmarkedCities BookmarkedCity[]
+  refreshTokens  RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Trip {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  name        String
+  description String?
+  coverImage  String?   @map("cover_image")
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  isPublic    Boolean   @default(false) @map("is_public")
+  shareToken  String?   @unique @map("share_token")
+  totalBudget Float?    @map("total_budget")
+  likes       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stops        Stop[]
+  expenses     TripExpense[]
+  packingItems PackingItem[]
+  notes        TripNote[]
+  sharedWith   SharedTrip[]
+
+  @@map("trips")
+}
+
+model City {
+  id              String  @id @default(cuid())
+  name            String
+  country         String
+  continent       String
+  lat             Float
+  lng             Float
+  costIndex       String  @map("cost_index") // budget | mid | luxury
+  popularityScore Float   @default(0) @map("popularity_score")
+  imageUrl        String? @map("image_url")
+  flagEmoji       String? @map("flag_emoji")
+  avgDailyCost    Float?  @map("avg_daily_cost")
+  weatherCategory String? @map("weather_category") // tropical | cold | temperate | desert | beach
+
+  stops            Stop[]
+  activities       Activity[]
+  bookmarkedBy     BookmarkedCity[]
+
+  @@map("cities")
+}
+
+model Stop {
+  id         String    @id @default(cuid())
+  tripId     String    @map("trip_id")
+  cityId     String    @map("city_id")
+  orderIndex Int       @map("order_index")
+  startDate  DateTime? @map("start_date")
+  endDate    DateTime? @map("end_date")
+  notes      String?
+
+  trip           Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  city           City           @relation(fields: [cityId], references: [id])
+  stopActivities StopActivity[]
+  tripNotes      TripNote[]
+
+  @@map("stops")
+}
+
+model Activity {
+  id            String  @id @default(cuid())
+  cityId        String  @map("city_id")
+  name          String
+  category      String  // sightseeing | food | adventure | culture | nightlife | shopping | wellness
+  description   String?
+  costEstimate  Float?  @map("cost_estimate")
+  durationHours Float?  @map("duration_hours")
+  imageUrl      String? @map("image_url")
+  rating        Float?  @default(4.0)
+
+  city           City           @relation(fields: [cityId], references: [id])
+  stopActivities StopActivity[]
+
+  @@map("activities")
+}
+
+model StopActivity {
+  id            String    @id @default(cuid())
+  stopId        String    @map("stop_id")
+  activityId    String    @map("activity_id")
+  scheduledDate DateTime? @map("scheduled_date")
+  scheduledTime String?   @map("scheduled_time")
+  customCost    Float?    @map("custom_cost")
+  isBooked      Boolean   @default(false) @map("is_booked")
+
+  stop     Stop     @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id])
+
+  @@map("stop_activities")
+}
+
+model TripExpense {
+  id       String   @id @default(cuid())
+  tripId   String   @map("trip_id")
+  category String   // transport | stay | food | activity | other
+  amount   Float
+  label    String
+  date     DateTime
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("trip_expenses")
+}
+
+model PackingItem {
+  id       String  @id @default(cuid())
+  tripId   String  @map("trip_id")
+  label    String
+  category String  // documents | clothing | electronics | toiletries | misc
+  isPacked Boolean @default(false) @map("is_packed")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("packing_items")
+}
+
+model TripNote {
+  id        String   @id @default(cuid())
+  tripId    String   @map("trip_id")
+  stopId    String?  @map("stop_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  trip Trip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  stop Stop? @relation(fields: [stopId], references: [id], onDelete: SetNull)
+
+  @@map("trip_notes")
+}
+
+model SharedTrip {
+  id              String @id @default(cuid())
+  tripId          String @map("trip_id")
+  sharedWithEmail String @map("shared_with_email")
+  permission      String // view | edit
+  sharedById      String @map("shared_by_id")
+
+  trip     Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  sharedBy User @relation(fields: [sharedById], references: [id])
+
+  @@unique([tripId, sharedWithEmail])
+  @@map("shared_trips")
+}
+
+model BookmarkedCity {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  cityId String @map("city_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city City @relation(fields: [cityId], references: [id])
+
+  @@unique([userId, cityId])
+  @@map("bookmarked_cities")
+}
