@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: traveloop-server
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npx prisma generate
+    startCommand: npx ts-node-dev --respawn --transpile-only src/index.ts
+    envVars:
+      - key: JWT_SECRET
+        value: traveloop-super-secret-jwt-key-2024
+      - key: JWT_REFRESH_SECRET
+        value: traveloop-refresh-secret-key-2024
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:./prisma/dev.db
+      - key: CLIENT_URL
+        value: https://stellular-wisp-142241.netlify.app

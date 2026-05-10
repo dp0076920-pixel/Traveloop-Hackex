@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import routes from './routes';
+import { seedIfEmpty } from './lib/seed';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,4 +21,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  await seedIfEmpty();
+});

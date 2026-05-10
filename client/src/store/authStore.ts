@@ -20,7 +20,10 @@ export const useAuthStore = create<AuthState>()(
       fetchMe: async () => {
         set({ loading: true });
         try {
-          const { data } = await api.get('/auth/me');
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const { data } = await api.get('/auth/me', { signal: controller.signal });
+          clearTimeout(timeout);
           set({ user: data });
         } catch {
           set({ user: null });
